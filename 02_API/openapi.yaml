@@ -1,0 +1,165 @@
+openapi: 3.1.0
+info:
+  title: voice.io API
+  version: 2.0.0
+servers:
+  - url: /api
+security:
+  - bearerAuth: []
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    ErrorEnvelope:
+      type: object
+      properties:
+        error:
+          type: object
+          properties:
+            code: { type: string }
+            message: { type: string }
+            details: { type: object, additionalProperties: true }
+            requestId: { type: string }
+          required: [code, message]
+      required: [error]
+    Job:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        type: { type: string }
+        status: { type: string, enum: [queued, running, succeeded, failed, canceled] }
+        progress: { type: integer, minimum: 0, maximum: 100 }
+        payload: { type: object, additionalProperties: true }
+        resultRef: { type: string, nullable: true }
+        error: { type: string, nullable: true }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+      required: [id, type, status, progress, createdAt, updatedAt]
+paths:
+  /projects:
+    get: { summary: List projects, responses: { "200": { description: OK } } }
+    post:
+      summary: Create project
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties: { name: { type: string } }
+              required: [name]
+      responses: { "201": { description: Created } }
+
+  /projects/{projectId}/dataset/rows:
+    get:
+      summary: List dataset rows
+      parameters:
+        - in: path
+          name: projectId
+          required: true
+          schema: { type: string, format: uuid }
+        - in: query
+          name: page
+          schema: { type: integer, default: 1 }
+        - in: query
+          name: pageSize
+          schema: { type: integer, default: 50 }
+        - in: query
+          name: q
+          schema: { type: string }
+        - in: query
+          name: filters
+          schema: { type: string }
+      responses: { "200": { description: OK } }
+
+  /projects/{projectId}/topics/collections:
+    post:
+      summary: Start analysis (create topic collection + generate topics)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                textColumnId: { type: string }
+                language: { type: string }
+                startMode: { type: string, enum: [scratch, template, inherit, import_file] }
+                enableSentiment: { type: boolean }
+                prompt: { type: string, nullable: true }
+              required: [textColumnId, language, startMode, enableSentiment]
+      responses:
+        "202":
+          description: Accepted
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Job" }
+
+  /projects/{projectId}/topics/assignments:
+    post:
+      summary: Bulk assign/remove/replace topics
+      responses: { "200": { description: OK } }
+
+  /projects/{projectId}/topics/review:
+    post:
+      summary: Bulk mark reviewed/unreviewed
+      responses: { "200": { description: OK } }
+
+  /projects/{projectId}/smart-columns:
+    get: { summary: List smart columns, responses: { "200": { description: OK } } }
+    post: { summary: Create smart column, responses: { "201": { description: Created } } }
+
+  /projects/{projectId}/smart-columns/{smartColumnId}/preview:
+    post:
+      summary: Preview smart column
+      responses:
+        "202":
+          description: Accepted
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Job" }
+
+  /projects/{projectId}/smart-columns/{smartColumnId}/fill:
+    post:
+      summary: Fill smart column (outdated/all/future)
+      responses:
+        "202":
+          description: Accepted
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Job" }
+
+  /projects/{projectId}/reports:
+    get: { summary: List reports, responses: { "200": { description: OK } } }
+    post: { summary: Create report, responses: { "201": { description: Created } } }
+
+  /projects/{projectId}/reports/{reportId}/layout:
+    get: { summary: Get report layout, responses: { "200": { description: OK } } }
+    patch: { summary: Patch report layout, responses: { "200": { description: OK } } }
+
+  /projects/{projectId}/reports/{reportId}/share:
+    get: { summary: Get share settings, responses: { "200": { description: OK } } }
+    post: { summary: Update share settings, responses: { "200": { description: OK } } }
+
+  /projects/{projectId}/insight-agent/ask:
+    post:
+      summary: Ask Insight Agent
+      responses:
+        "202":
+          description: Accepted
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Job" }
+
+  /projects/{projectId}/jobs/{jobId}:
+    get:
+      summary: Poll job
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Job" }
