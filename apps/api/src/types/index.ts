@@ -125,10 +125,39 @@ export interface SmartColumn {
   updatedAt: string;
 }
 
+export type ReportMode = "preview" | "edit";
+
 export interface Report {
   id: string;
   projectId: string;
   name: string;
+  mode: ReportMode;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface ReportView {
+  id: string;
+  reportId: string;
+  name: string;
+  filters: Filter[];
+  segments: Filter[];
+  dateRange: Record<string, unknown> | null;
+  sortOrder: number;
+}
+
+export interface InsightElement {
+  id: string;
+  sectionId: string;
+  type: string;
+  config: Record<string, unknown>;
+  sortOrder: number;
+}
+
+export interface ReportSection {
+  id: string;
+  reportId: string;
+  title: string;
+  sortOrder: number;
+  elements: InsightElement[];
 }

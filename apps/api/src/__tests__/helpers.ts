@@ -4,12 +4,16 @@ import { expect } from "vitest";
 export const JWT_SECRET = "dev-secret-change-in-production";
 
 // ─── Fake UUIDs ───────────────────────────────────────────────────────────────
-export const FAKE_PROJECT_ID = "aaaaaaaa-aaaa-4aaa-aaaa-aaaaaaaaaaaa";
-export const FAKE_COL_ID     = "bbbbbbbb-bbbb-4bbb-bbbb-bbbbbbbbbbbb";
-export const FAKE_CAT_ID     = "cccccccc-cccc-4ccc-cccc-cccccccccccc";
-export const FAKE_TOPIC_ID   = "dddddddd-dddd-4ddd-dddd-dddddddddddd";
-export const FAKE_JOB_ID     = "eeeeeeee-eeee-4eee-eeee-eeeeeeeeeeee";
-export const FAKE_ROW_ID     = "ffffffff-ffff-4fff-ffff-ffffffffffff";
+export const FAKE_PROJECT_ID  = "aaaaaaaa-aaaa-4aaa-aaaa-aaaaaaaaaaaa";
+export const FAKE_COL_ID      = "bbbbbbbb-bbbb-4bbb-bbbb-bbbbbbbbbbbb";
+export const FAKE_CAT_ID      = "cccccccc-cccc-4ccc-cccc-cccccccccccc";
+export const FAKE_TOPIC_ID    = "dddddddd-dddd-4ddd-dddd-dddddddddddd";
+export const FAKE_JOB_ID      = "eeeeeeee-eeee-4eee-eeee-eeeeeeeeeeee";
+export const FAKE_ROW_ID      = "ffffffff-ffff-4fff-ffff-ffffffffffff";
+export const FAKE_REPORT_ID   = "11111111-1111-4111-1111-111111111111";
+export const FAKE_VIEW_ID     = "22222222-2222-4222-2222-222222222222";
+export const FAKE_SECTION_ID  = "33333333-3333-4333-3333-333333333333";
+export const FAKE_ELEMENT_ID  = "44444444-4444-4444-4444-444444444444";
 
 // ─── Auth ─────────────────────────────────────────────────────────────────────
 export function makeToken(role: string = "admin"): string {
@@ -73,6 +77,25 @@ export const dbRow = {
   translated_text: {},
   duplicates_group_key: null,
   created_at: NOW,
+};
+
+export const dbReport = {
+  id: FAKE_REPORT_ID,
+  project_id: FAKE_PROJECT_ID,
+  name: "Q1 Analysis",
+  mode: "edit",
+  created_at: NOW,
+  updated_at: NOW,
+};
+
+export const dbView = {
+  id: FAKE_VIEW_ID,
+  report_id: FAKE_REPORT_ID,
+  name: "Region: EMEA",
+  filters: [{ field: "region", op: "eq", value: "EMEA" }],
+  segments: [],
+  date_range: null,
+  sort_order: 0,
 };
 
 // ─── Contract assertion helpers ───────────────────────────────────────────────
