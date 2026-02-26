@@ -125,6 +125,14 @@ export interface SmartColumn {
   updatedAt: string;
 }
 
+export interface SmartColumnValue {
+  rowId: string;
+  smartColumnId: string;
+  value: unknown;
+  confidence: number | null;
+  computedAt: string;
+}
+
 export type ReportMode = "preview" | "edit";
 
 export interface Report {

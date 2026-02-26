@@ -14,6 +14,8 @@ export const FAKE_REPORT_ID   = "11111111-1111-4111-1111-111111111111";
 export const FAKE_VIEW_ID     = "22222222-2222-4222-2222-222222222222";
 export const FAKE_SECTION_ID  = "33333333-3333-4333-3333-333333333333";
 export const FAKE_ELEMENT_ID  = "44444444-4444-4444-4444-444444444444";
+export const FAKE_SC_ID       = "55555555-5555-4555-5555-555555555555";
+export const FAKE_SCV_ID      = "66666666-6666-4666-6666-666666666666";
 
 // ─── Auth ─────────────────────────────────────────────────────────────────────
 export function makeToken(role: string = "admin"): string {
@@ -96,6 +98,27 @@ export const dbView = {
   segments: [],
   date_range: null,
   sort_order: 0,
+};
+
+export const dbSmartColumn = {
+  id: FAKE_SC_ID,
+  project_id: FAKE_PROJECT_ID,
+  name: "Sentiment Score",
+  output_type: "text",
+  compute_type: "llm",
+  source_columns: ["col_feedback"],
+  config: { prompt: "Classify the sentiment." },
+  status: "draft",
+  created_at: NOW,
+  updated_at: NOW,
+};
+
+export const dbSmartColumnValue = {
+  smart_column_id: FAKE_SC_ID,
+  row_id: FAKE_ROW_ID,
+  value: "positive",
+  confidence: 0.95,
+  computed_at: NOW,
 };
 
 // ─── Contract assertion helpers ───────────────────────────────────────────────
