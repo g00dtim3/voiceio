@@ -1,0 +1,101 @@
+// ─── Error Envelope ──────────────────────────────────────────────────────────
+export type ErrorCode =
+  | "UNAUTHORIZED"
+  | "FORBIDDEN"
+  | "NOT_FOUND"
+  | "VALIDATION_ERROR"
+  | "CONFLICT"
+  | "RATE_LIMITED"
+  | "JOB_FAILED"
+  | "INTERNAL_ERROR";
+
+export interface ApiError {
+  code: ErrorCode;
+  message: string;
+  details?: Record<string, unknown>;
+  requestId?: string;
+}
+
+export interface ErrorEnvelope {
+  error: ApiError;
+}
+
+// ─── Pagination ───────────────────────────────────────────────────────────────
+export interface PaginatedResponse<T> {
+  items: T[];
+  page: number;
+  pageSize: number;
+  total: number;
+}
+
+// ─── Filter ───────────────────────────────────────────────────────────────────
+export type FilterOp = "eq" | "neq" | "in" | "contains" | "gte" | "lte";
+
+export interface Filter {
+  field: string;
+  op: FilterOp;
+  value: unknown;
+}
+
+// ─── Job ──────────────────────────────────────────────────────────────────────
+export type JobStatus = "queued" | "running" | "succeeded" | "failed" | "canceled";
+
+export interface Job {
+  id: string;
+  type: string;
+  status: JobStatus;
+  progress: number;
+  payload: Record<string, unknown>;
+  resultRef: string | null;
+  error: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// ─── Domain models ────────────────────────────────────────────────────────────
+export interface Project {
+  id: string;
+  name: string;
+  createdAt: string;
+}
+
+export interface DatasetRow {
+  id: string;
+  projectId: string;
+  rowIndex: number;
+  textToAnalyze: Record<string, string>;
+  auxValues: Record<string, unknown>;
+  translatedText: Record<string, string>;
+  duplicatesGroupKey: string | null;
+  createdAt: string;
+}
+
+export interface TopicCollection {
+  id: string;
+  projectId: string;
+  textColumnId: string;
+  language: string;
+  sentimentEnabled: boolean;
+  createdAt: string;
+}
+
+export interface SmartColumn {
+  id: string;
+  projectId: string;
+  name: string;
+  outputType: "text" | "number" | "boolean" | "date" | "json";
+  computeType: "mapping" | "formula" | "llm";
+  sourceColumns: string[];
+  config: Record<string, unknown>;
+  status: "draft" | "idle" | "running" | "completed" | "failed" | "outdated";
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface Report {
+  id: string;
+  projectId: string;
+  name: string;
+  createdAt: string;
+  updatedAt: string;
+}
