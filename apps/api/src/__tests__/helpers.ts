@@ -16,6 +16,9 @@ export const FAKE_SECTION_ID  = "33333333-3333-4333-3333-333333333333";
 export const FAKE_ELEMENT_ID  = "44444444-4444-4444-4444-444444444444";
 export const FAKE_SC_ID       = "55555555-5555-4555-5555-555555555555";
 export const FAKE_SCV_ID      = "66666666-6666-4666-6666-666666666666";
+export const FAKE_PERM_ID     = "77777777-7777-4777-7777-777777777777";
+export const FAKE_TOKEN       = "pubtoken123abc";
+export const FAKE_USER_ID     = "user-test-2";
 
 // ─── Auth ─────────────────────────────────────────────────────────────────────
 export function makeToken(role: string = "admin"): string {
@@ -119,6 +122,27 @@ export const dbSmartColumnValue = {
   value: "positive",
   confidence: 0.95,
   computed_at: NOW,
+};
+
+export const dbShareReport = {
+  id: FAKE_REPORT_ID,
+  project_id: FAKE_PROJECT_ID,
+  name: "Q1 Analysis",
+  mode: "edit",
+  share_enabled: true,
+  share_token: FAKE_TOKEN,
+  share_password_hash: null,
+  created_at: NOW,
+  updated_at: NOW,
+};
+
+export const dbPermission = {
+  id: FAKE_PERM_ID,
+  report_id: FAKE_REPORT_ID,
+  user_id: FAKE_USER_ID,
+  permission: "edit",
+  granted_by: "test-user-1",
+  created_at: NOW,
 };
 
 // ─── Contract assertion helpers ───────────────────────────────────────────────

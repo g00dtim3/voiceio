@@ -20,8 +20,10 @@ import {
   FAKE_VIEW_ID,
   FAKE_SECTION_ID,
   FAKE_ELEMENT_ID,
+  FAKE_TOKEN,
   dbReport,
   dbView,
+  dbShareReport,
   NOW,
   expectErrorEnvelope,
   expectPaginatedShape,
@@ -523,8 +525,8 @@ describe("GWT S2 — PATCH /reports/:reportId/layout: blocked in preview mode", 
 // Share settings
 // ═══════════════════════════════════════════════════════════════════════════════
 describe("GET /reports/:reportId/share", () => {
-  it("returns default { publicEnabled: false, embedEnabled: false } when no settings exist", async () => {
-    mockQuery.mockResolvedValueOnce({ rows: [] });
+  it("returns 200 with share settings for existing report", async () => {
+    mockQuery.mockResolvedValueOnce({ rows: [dbShareReport] });
 
     const res = await request(app)
       .get(`${BASE}/${FAKE_REPORT_ID}/share`)
@@ -533,50 +535,51 @@ describe("GET /reports/:reportId/share", () => {
     expect(res.status).toBe(200);
     expect(res.body).toMatchObject({
       reportId: FAKE_REPORT_ID,
-      publicEnabled: false,
-      embedEnabled: false,
+      shareEnabled: true,
+      shareToken: FAKE_TOKEN,
+      passwordEnabled: false,
     });
   });
 
-  it("returns persisted settings when they exist", async () => {
-    mockQuery.mockResolvedValueOnce({
-      rows: [{
-        report_id: FAKE_REPORT_ID,
-        public_enabled: true,
-        embed_enabled: false,
-        created_at: NOW,
-      }],
-    });
+  it("returns 404 NOT_FOUND when report does not belong to project", async () => {
+    mockQuery.mockResolvedValueOnce({ rows: [] });
 
     const res = await request(app)
       .get(`${BASE}/${FAKE_REPORT_ID}/share`)
       .set(AUTH);
 
-    expect(res.status).toBe(200);
-    expect(res.body).toMatchObject({ publicEnabled: true, embedEnabled: false });
+    expect(res.status).toBe(404);
+    expectErrorEnvelope(res.body, "NOT_FOUND");
   });
 });
 
 describe("POST /reports/:reportId/share", () => {
-  it("returns 200 { ok: true } on successful upsert", async () => {
-    mockQuery.mockResolvedValueOnce({ rows: [], rowCount: 1 });
+  it("returns 201 with share settings after enabling sharing", async () => {
+    mockQuery.mockResolvedValueOnce({ rows: [dbShareReport] });
 
     const res = await request(app)
       .post(`${BASE}/${FAKE_REPORT_ID}/share`)
       .set(AUTH)
-      .send({ publicEnabled: true, embedEnabled: false });
+      .send({});
 
-    expect(res.status).toBe(200);
-    expect(res.body).toMatchObject({ ok: true });
+    expect(res.status).toBe(201);
+    expect(res.body).toMatchObject({
+      reportId: FAKE_REPORT_ID,
+      shareEnabled: true,
+      passwordEnabled: false,
+    });
+    expect(typeof res.body.shareToken).toBe("string");
   });
 
-  it("returns 422 VALIDATION_ERROR when publicEnabled is missing", async () => {
+  it("returns 404 NOT_FOUND when report does not exist", async () => {
+    mockQuery.mockResolvedValueOnce({ rows: [] });
+
     const res = await request(app)
       .post(`${BASE}/${FAKE_REPORT_ID}/share`)
       .set(AUTH)
-      .send({ embedEnabled: false });
+      .send({});
 
-    expect(res.status).toBe(422);
-    expectErrorEnvelope(res.body, "VALIDATION_ERROR");
+    expect(res.status).toBe(404);
+    expectErrorEnvelope(res.body, "NOT_FOUND");
   });
 });

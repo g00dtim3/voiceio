@@ -135,6 +135,22 @@ export interface SmartColumnValue {
 
 export type ReportMode = "preview" | "edit";
 
+export interface ReportShareSettings {
+  reportId: string;
+  shareEnabled: boolean;
+  shareToken: string | null;
+  passwordEnabled: boolean;
+}
+
+export interface ReportPermission {
+  id: string;
+  reportId: string;
+  userId: string;
+  permission: "view" | "edit";
+  grantedBy: string | null;
+  createdAt: string;
+}
+
 export interface Report {
   id: string;
   projectId: string;
