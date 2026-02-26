@@ -1,3 +1,4 @@
+import { createHash } from "crypto";
 import { Router, Request, Response } from "express";
 import { pool } from "../db/pool";
 import { sendError } from "../middleware/errorHandler";
@@ -5,17 +6,42 @@ import { Job } from "../types";
 
 export const jobsRouter = Router({ mergeParams: true });
 
-// ─── Helper: enqueue a job and return the Job object ─────────────────────────
+// ─── Idempotency: stable hash of (type + sorted payload) ─────────────────────
+function computeDedupeKey(type: string, payload: Record<string, unknown>): string {
+  const normalized = JSON.stringify({ type, payload }, Object.keys({ type, ...payload }).sort());
+  return createHash("sha256").update(normalized).digest("hex").slice(0, 40);
+}
+
+// ─── Helper: enqueue a job (idempotent) ──────────────────────────────────────
 export async function enqueueJob(
   projectId: string,
   type: string,
-  payload: Record<string, unknown>
+  payload: Record<string, unknown>,
+  force = false
 ): Promise<Job> {
+  const dedupeKey = computeDedupeKey(type, payload);
+
+  if (!force) {
+    // Return existing active job for the same work
+    const existing = await pool.query(
+      `SELECT id, type, status, progress, payload, result_ref, error, created_at, updated_at
+       FROM jobs
+       WHERE project_id = $1
+         AND type = $2
+         AND dedupe_key = $3
+         AND status IN ('queued', 'running', 'succeeded')
+       ORDER BY created_at DESC
+       LIMIT 1`,
+      [projectId, type, dedupeKey]
+    );
+    if (existing.rows.length > 0) return rowToJob(existing.rows[0]);
+  }
+
   const { rows } = await pool.query(
-    `INSERT INTO jobs (project_id, type, payload)
-     VALUES ($1, $2, $3)
+    `INSERT INTO jobs (project_id, type, payload, dedupe_key)
+     VALUES ($1, $2, $3, $4)
      RETURNING id, type, status, progress, payload, result_ref, error, created_at, updated_at`,
-    [projectId, type, JSON.stringify(payload)]
+    [projectId, type, JSON.stringify(payload), dedupeKey]
   );
   return rowToJob(rows[0]);
 }
