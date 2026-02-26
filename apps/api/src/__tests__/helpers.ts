@@ -1,0 +1,199 @@
+import jwt from "jsonwebtoken";
+import { expect } from "vitest";
+
+export const JWT_SECRET = "dev-secret-change-in-production";
+
+// ─── Fake UUIDs ───────────────────────────────────────────────────────────────
+export const FAKE_PROJECT_ID  = "aaaaaaaa-aaaa-4aaa-aaaa-aaaaaaaaaaaa";
+export const FAKE_COL_ID      = "bbbbbbbb-bbbb-4bbb-bbbb-bbbbbbbbbbbb";
+export const FAKE_CAT_ID      = "cccccccc-cccc-4ccc-cccc-cccccccccccc";
+export const FAKE_TOPIC_ID    = "dddddddd-dddd-4ddd-dddd-dddddddddddd";
+export const FAKE_JOB_ID      = "eeeeeeee-eeee-4eee-eeee-eeeeeeeeeeee";
+export const FAKE_ROW_ID      = "ffffffff-ffff-4fff-ffff-ffffffffffff";
+export const FAKE_REPORT_ID   = "11111111-1111-4111-1111-111111111111";
+export const FAKE_VIEW_ID     = "22222222-2222-4222-2222-222222222222";
+export const FAKE_SECTION_ID  = "33333333-3333-4333-3333-333333333333";
+export const FAKE_ELEMENT_ID  = "44444444-4444-4444-4444-444444444444";
+export const FAKE_SC_ID       = "55555555-5555-4555-5555-555555555555";
+export const FAKE_SCV_ID      = "66666666-6666-4666-6666-666666666666";
+export const FAKE_PERM_ID     = "77777777-7777-4777-7777-777777777777";
+export const FAKE_ANSWER_ID   = "88888888-8888-4888-8888-888888888888";
+export const FAKE_TOKEN       = "pubtoken123abc";
+export const FAKE_USER_ID     = "user-test-2";
+
+// ─── Auth ─────────────────────────────────────────────────────────────────────
+export function makeToken(role: string = "admin"): string {
+  return jwt.sign({ sub: "test-user-1", role }, JWT_SECRET, { expiresIn: "1h" });
+}
+
+// ─── Canonical DB rows ────────────────────────────────────────────────────────
+export const NOW = new Date("2026-01-01T00:00:00.000Z");
+
+export const dbProject = {
+  id: FAKE_PROJECT_ID,
+  name: "Test Project",
+  created_at: NOW,
+};
+
+export const dbCollection = {
+  id: FAKE_COL_ID,
+  project_id: FAKE_PROJECT_ID,
+  text_column_id: "col_feedback",
+  language: "en",
+  sentiment_enabled: false,
+  created_at: NOW,
+};
+
+export const dbJob = {
+  id: FAKE_JOB_ID,
+  type: "topic_generation",
+  status: "queued",
+  progress: 0,
+  payload: {},
+  result_ref: null,
+  error: null,
+  created_at: NOW,
+  updated_at: NOW,
+};
+
+export const dbCategory = {
+  id: FAKE_CAT_ID,
+  collection_id: FAKE_COL_ID,
+  name: "Generated",
+  sort_order: 0,
+};
+
+export const dbTopic = {
+  id: FAKE_TOPIC_ID,
+  category_id: FAKE_CAT_ID,
+  label: "Product Quality",
+  description: null,
+  sentiment_enabled: false,
+  sentiment_labels: {},
+  sort_order: 0,
+  assignment_count: 0,
+};
+
+export const dbRow = {
+  id: FAKE_ROW_ID,
+  project_id: FAKE_PROJECT_ID,
+  row_index: 1,
+  text_to_analyze: { col_feedback: "great product" },
+  aux_values: {},
+  translated_text: {},
+  duplicates_group_key: null,
+  created_at: NOW,
+};
+
+export const dbReport = {
+  id: FAKE_REPORT_ID,
+  project_id: FAKE_PROJECT_ID,
+  name: "Q1 Analysis",
+  mode: "edit",
+  created_at: NOW,
+  updated_at: NOW,
+};
+
+export const dbView = {
+  id: FAKE_VIEW_ID,
+  report_id: FAKE_REPORT_ID,
+  name: "Region: EMEA",
+  filters: [{ field: "region", op: "eq", value: "EMEA" }],
+  segments: [],
+  date_range: null,
+  sort_order: 0,
+};
+
+export const dbSmartColumn = {
+  id: FAKE_SC_ID,
+  project_id: FAKE_PROJECT_ID,
+  name: "Sentiment Score",
+  output_type: "text",
+  compute_type: "llm",
+  source_columns: ["col_feedback"],
+  config: { prompt: "Classify the sentiment." },
+  status: "draft",
+  created_at: NOW,
+  updated_at: NOW,
+};
+
+export const dbSmartColumnValue = {
+  smart_column_id: FAKE_SC_ID,
+  row_id: FAKE_ROW_ID,
+  value: "positive",
+  confidence: 0.95,
+  computed_at: NOW,
+};
+
+export const dbShareReport = {
+  id: FAKE_REPORT_ID,
+  project_id: FAKE_PROJECT_ID,
+  name: "Q1 Analysis",
+  mode: "edit",
+  share_enabled: true,
+  share_token: FAKE_TOKEN,
+  share_password_hash: null,
+  created_at: NOW,
+  updated_at: NOW,
+};
+
+export const dbPermission = {
+  id: FAKE_PERM_ID,
+  report_id: FAKE_REPORT_ID,
+  user_id: FAKE_USER_ID,
+  permission: "edit",
+  granted_by: "test-user-1",
+  created_at: NOW,
+};
+
+export const dbAnswer = {
+  id: FAKE_ANSWER_ID,
+  project_id: FAKE_PROJECT_ID,
+  job_id: FAKE_JOB_ID,
+  question: "What are the main themes?",
+  answer: "The main themes are product quality and shipping speed.",
+  ai_generated: true,
+  sample_size: 120,
+  filters: [{ field: "region", op: "eq", value: "EMEA" }],
+  segments: [],
+  date_range: null,
+  view_id: null,
+  created_at: NOW,
+};
+
+// ─── Contract assertion helpers ───────────────────────────────────────────────
+
+/** Asserts the response body matches the ErrorEnvelope contract from 00_CONTRACTS.md */
+export function expectErrorEnvelope(body: unknown, expectedCode?: string): void {
+  expect(body).toMatchObject({
+    error: expect.objectContaining({
+      code: expect.any(String),
+      message: expect.any(String),
+    }),
+  });
+  if (expectedCode) {
+    expect((body as { error: { code: string } }).error.code).toBe(expectedCode);
+  }
+}
+
+/** Asserts the response body matches the Job schema from openapi.yaml */
+export function expectJobShape(body: unknown): void {
+  expect(body).toMatchObject({
+    id: expect.any(String),
+    type: expect.any(String),
+    status: expect.stringMatching(/^(queued|running|succeeded|failed|canceled)$/),
+    progress: expect.any(Number),
+    createdAt: expect.any(String),
+    updatedAt: expect.any(String),
+  });
+}
+
+/** Asserts the response body matches the Pagination contract from 00_CONTRACTS.md */
+export function expectPaginatedShape(body: unknown): void {
+  expect(body).toMatchObject({
+    items: expect.any(Array),
+    page: expect.any(Number),
+    pageSize: expect.any(Number),
+    total: expect.any(Number),
+  });
+}
