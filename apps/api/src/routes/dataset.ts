@@ -2,7 +2,8 @@ import { Router, Request, Response } from "express";
 import { z } from "zod";
 import { pool } from "../db/pool";
 import { sendError } from "../middleware/errorHandler";
-import { DatasetRow, Filter, PaginatedResponse } from "../types";
+import { parseFilters } from "../lib/filters";
+import { DatasetRow, PaginatedResponse } from "../types";
 
 export const datasetRouter = Router({ mergeParams: true });
 
@@ -14,18 +15,8 @@ const ListRowsQuerySchema = z.object({
   focus: z.coerce.number().int().min(0).max(1).default(0),
   // collectionId is required when focus=1 (scopes which assignments to inspect)
   collectionId: z.string().uuid().optional(),
-  // filters is a JSON-encoded Filter[] string
-  filters: z
-    .string()
-    .optional()
-    .transform((v) => {
-      if (!v) return [] as Filter[];
-      try {
-        return JSON.parse(v) as Filter[];
-      } catch {
-        return [] as Filter[];
-      }
-    }),
+  // filters is a JSON-encoded Filter[] string — parsed via lib/filters.ts
+  filters: z.string().optional().transform(parseFilters),
 });
 
 // GET /projects/:projectId/dataset/rows

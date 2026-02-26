@@ -1,16 +1,10 @@
-import { createHash } from "crypto";
 import { Router, Request, Response } from "express";
 import { pool } from "../db/pool";
 import { sendError } from "../middleware/errorHandler";
+import { computeDedupeKey } from "../lib/dedupeKey";
 import { Job } from "../types";
 
 export const jobsRouter = Router({ mergeParams: true });
-
-// ─── Idempotency: stable hash of (type + sorted payload) ─────────────────────
-function computeDedupeKey(type: string, payload: Record<string, unknown>): string {
-  const normalized = JSON.stringify({ type, payload }, Object.keys({ type, ...payload }).sort());
-  return createHash("sha256").update(normalized).digest("hex").slice(0, 40);
-}
 
 // ─── Helper: enqueue a job (idempotent) ──────────────────────────────────────
 export async function enqueueJob(
