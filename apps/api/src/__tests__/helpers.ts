@@ -17,6 +17,7 @@ export const FAKE_ELEMENT_ID  = "44444444-4444-4444-4444-444444444444";
 export const FAKE_SC_ID       = "55555555-5555-4555-5555-555555555555";
 export const FAKE_SCV_ID      = "66666666-6666-4666-6666-666666666666";
 export const FAKE_PERM_ID     = "77777777-7777-4777-7777-777777777777";
+export const FAKE_ANSWER_ID   = "88888888-8888-4888-8888-888888888888";
 export const FAKE_TOKEN       = "pubtoken123abc";
 export const FAKE_USER_ID     = "user-test-2";
 
@@ -142,6 +143,21 @@ export const dbPermission = {
   user_id: FAKE_USER_ID,
   permission: "edit",
   granted_by: "test-user-1",
+  created_at: NOW,
+};
+
+export const dbAnswer = {
+  id: FAKE_ANSWER_ID,
+  project_id: FAKE_PROJECT_ID,
+  job_id: FAKE_JOB_ID,
+  question: "What are the main themes?",
+  answer: "The main themes are product quality and shipping speed.",
+  ai_generated: true,
+  sample_size: 120,
+  filters: [{ field: "region", op: "eq", value: "EMEA" }],
+  segments: [],
+  date_range: null,
+  view_id: null,
   created_at: NOW,
 };
 

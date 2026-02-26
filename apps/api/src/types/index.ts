@@ -185,3 +185,24 @@ export interface ReportSection {
   sortOrder: number;
   elements: InsightElement[];
 }
+
+// ─── Insight Agent ────────────────────────────────────────────────────────────
+
+/** Stored answer produced by the insight agent worker.
+ *  - aiGenerated is always true (labels the response as AI output)
+ *  - sampleSize is the n= count of dataset rows that matched the active filters
+ */
+export interface InsightAnswer {
+  id: string;
+  projectId: string;
+  jobId: string | null;
+  question: string;
+  answer: string;
+  aiGenerated: boolean;
+  sampleSize: number;
+  filters: Filter[];
+  segments: Filter[];
+  dateRange: Record<string, unknown> | null;
+  viewId: string | null;
+  createdAt: string;
+}
