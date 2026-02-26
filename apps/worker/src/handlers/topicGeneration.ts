@@ -78,7 +78,7 @@ export async function handleTopicGeneration(ctx: JobContext): Promise<string | n
   const topicIds: string[] = [];
   for (let i = 0; i < stubTopics.length; i++) {
     const res = await pool.query(
-      `INSERT INTO topics (category_id, name, sort_order)
+      `INSERT INTO topics (category_id, label, sort_order)
        VALUES ($1, $2, $3) RETURNING id`,
       [categoryId, stubTopics[i].name, i]
     );

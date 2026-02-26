@@ -79,6 +79,39 @@ export interface TopicCollection {
   createdAt: string;
 }
 
+export interface TopicCategory {
+  id: string;
+  collectionId: string;
+  name: string;
+  sortOrder: number;
+  topics: Topic[];
+}
+
+export type SentimentValue = "positive" | "neutral" | "negative";
+
+export interface Topic {
+  id: string;
+  categoryId: string;
+  label: string;
+  description: string | null;
+  sentimentEnabled: boolean;
+  sentimentLabels: Record<string, string>;
+  sortOrder: number;
+  assignmentCount?: number;
+}
+
+export interface TopicAssignment {
+  id: string;
+  projectId: string;
+  rowId: string;
+  topicId: string;
+  sentiment: SentimentValue | null;
+  source: "ai" | "human";
+  reviewed: boolean;
+  confidence: number | null;
+  createdAt: string;
+}
+
 export interface SmartColumn {
   id: string;
   projectId: string;
