@@ -1,12 +1,14 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { AuthLayout } from "../components/auth-layout";
 import { Button } from "@/shared/ui/button";
 import { TextInput } from "@/shared/ui/text-input";
+import { acceptInvite } from "../api/auth-api";
 
 const schema = z.object({
   fullName: z.string().min(1, "Full name is required"),
@@ -20,6 +22,9 @@ interface InviteScreenProps {
 }
 
 export function InviteScreen({ workspaceName = "Customer Insights Team" }: InviteScreenProps) {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const inviteToken = searchParams.get("token") ?? "";
   const [loading, setLoading] = useState(false);
 
   const {
@@ -33,7 +38,8 @@ export function InviteScreen({ workspaceName = "Customer Insights Team" }: Invit
   const onSubmit = async (data: FormData) => {
     setLoading(true);
     try {
-      console.log("Accept invite:", data);
+      await acceptInvite(inviteToken, data.password, data.fullName);
+      router.push("/");
     } finally {
       setLoading(false);
     }
