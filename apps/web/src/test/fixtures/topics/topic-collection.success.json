@@ -1,0 +1,42 @@
+{
+  "id": "tc_1",
+  "name": "Main Topic Collection",
+  "sentimentEnabled": true,
+  "categories": [
+    {
+      "id": "cat_1",
+      "label": "Performance",
+      "order": 1,
+      "topics": [
+        {
+          "id": "topic_1",
+          "label": "Battery life",
+          "description": "Comments related to battery duration.",
+          "sentimentEnabled": true,
+          "order": 1
+        },
+        {
+          "id": "topic_3",
+          "label": "App stability",
+          "description": "Comments about crashes and bugs.",
+          "sentimentEnabled": true,
+          "order": 2
+        }
+      ]
+    },
+    {
+      "id": "cat_2",
+      "label": "Service",
+      "order": 2,
+      "topics": [
+        {
+          "id": "topic_2",
+          "label": "Customer support",
+          "description": "Interactions with support.",
+          "sentimentEnabled": true,
+          "order": 1
+        }
+      ]
+    }
+  ]
+}

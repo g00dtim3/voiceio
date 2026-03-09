@@ -1,10 +1,13 @@
-import { PageHeader } from "@/shared/ui/layout";
+"use client";
 
-export default function SmartColumnsPage() {
-  return (
-    <div className="space-y-6">
-      <PageHeader title="Smart Columns" subtitle="Configure and manage computed columns" />
-      <p className="text-sm text-[var(--text-secondary)]">Smart Columns module placeholder — will be built in Milestone 6.</p>
-    </div>
-  );
+import { use } from "react";
+import { SmartColumnsOverviewScreen } from "@/features/smart-columns";
+
+interface PageProps {
+  params: Promise<{ projectId: string }>;
+}
+
+export default function SmartColumnsPage({ params }: PageProps) {
+  const { projectId } = use(params);
+  return <SmartColumnsOverviewScreen projectId={projectId} />;
 }

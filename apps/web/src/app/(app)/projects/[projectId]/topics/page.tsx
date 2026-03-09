@@ -1,10 +1,18 @@
-import { PageHeader } from "@/shared/ui/layout";
+"use client";
+
+import { useParams } from "next/navigation";
+import { TopicsScreen } from "@/features/topics";
+
+// TODO: collectionId should come from route params or project config
+const DEFAULT_COLLECTION_ID = "default";
 
 export default function TopicsPage() {
+  const params = useParams<{ projectId: string }>();
+
   return (
-    <div className="space-y-6">
-      <PageHeader title="Topics" subtitle="Manage topic collections and assignments" />
-      <p className="text-sm text-[var(--text-secondary)]">Topics module placeholder — will be built in Milestone 5.</p>
-    </div>
+    <TopicsScreen
+      projectId={params.projectId}
+      collectionId={DEFAULT_COLLECTION_ID}
+    />
   );
 }

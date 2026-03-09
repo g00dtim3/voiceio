@@ -1,0 +1,12 @@
+{
+  "teamAccess": [
+    { "userId": "usr_1", "name": "Alice Martin", "role": "owner" },
+    { "userId": "usr_2", "name": "Sam Durand", "role": "viewer" }
+  ],
+  "publicAccess": {
+    "enabled": true,
+    "shareToken": "shr_123",
+    "passwordEnabled": false,
+    "embedEnabled": true
+  }
+}

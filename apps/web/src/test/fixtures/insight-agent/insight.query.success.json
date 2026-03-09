@@ -1,0 +1,19 @@
+{
+  "id": "ir_1",
+  "status": "completed",
+  "title": "Most Mentioned Negative Topics – Apple",
+  "narrative": "Customer support and pricing are the most frequent negative topics among Apple users.",
+  "rowsAnalyzed": 214,
+  "chart": {
+    "type": "horizontal_bar",
+    "data": [
+      { "label": "Customer support", "value": 87 },
+      { "label": "Pricing", "value": 64 }
+    ]
+  },
+  "suggestedQuestions": [
+    "How does this compare with Samsung?",
+    "Which topics are improving over time?"
+  ],
+  "aiGenerated": true
+}

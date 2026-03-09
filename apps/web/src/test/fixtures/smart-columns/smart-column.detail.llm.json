@@ -1,0 +1,14 @@
+{
+  "id": "sc_2",
+  "name": "Extract brand",
+  "outputType": "text",
+  "computationType": "llm",
+  "status": "draft",
+  "config": {
+    "prompt": "Extract the most relevant brand name from the input text.",
+    "inputVariables": [
+      { "key": "text", "sourceColumn": "comment_text" }
+    ],
+    "fallbackValue": "Unknown"
+  }
+}

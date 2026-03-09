@@ -1,0 +1,19 @@
+{
+  "globalScore": 84,
+  "dimensions": [
+    { "label": "Coverage", "score": 81 },
+    { "label": "Consistency", "score": 88 },
+    { "label": "Specificity", "score": 79 }
+  ],
+  "breakdown": [
+    {
+      "categoryId": "cat_1",
+      "categoryLabel": "Performance",
+      "topicId": "topic_1",
+      "topicLabel": "Battery life",
+      "score": 86,
+      "count": 245,
+      "influence": 0.32
+    }
+  ]
+}

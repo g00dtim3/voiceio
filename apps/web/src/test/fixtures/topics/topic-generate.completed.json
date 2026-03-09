@@ -1,0 +1,18 @@
+{
+  "status": "completed",
+  "groups": {
+    "new": [
+      {
+        "label": "Pricing",
+        "description": "Mentions related to price and affordability."
+      }
+    ],
+    "similar": [
+      {
+        "label": "Battery performance",
+        "matchesTopicId": "topic_1"
+      }
+    ],
+    "discarded": []
+  }
+}
