@@ -1,0 +1,31 @@
+{
+  "id": "rep_1",
+  "name": "Mobile Providers - Q2",
+  "views": [
+    {
+      "id": "view_1",
+      "name": "Full Report",
+      "filters": [],
+      "segments": []
+    }
+  ],
+  "sections": [
+    {
+      "id": "sec_1",
+      "name": "Summary",
+      "order": 1,
+      "elements": [
+        {
+          "id": "el_1",
+          "type": "key_metrics_overview",
+          "order": 1,
+          "config": {
+            "scoreColumn": "nps_score",
+            "textColumn": "comment_text"
+          }
+        }
+      ]
+    }
+  ],
+  "updatedAt": "2026-03-09T10:00:00Z"
+}

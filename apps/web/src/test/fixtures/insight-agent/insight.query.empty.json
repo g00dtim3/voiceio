@@ -1,0 +1,13 @@
+{
+  "id": "ir_2",
+  "status": "completed",
+  "title": "No results found",
+  "narrative": "No data matches the current filters.",
+  "rowsAnalyzed": 0,
+  "chart": null,
+  "suggestedQuestions": [
+    "Try broadening your filters",
+    "Ask about a different topic"
+  ],
+  "aiGenerated": true
+}

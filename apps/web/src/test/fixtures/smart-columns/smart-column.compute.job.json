@@ -1,0 +1,11 @@
+{
+  "job": {
+    "id": "job_88",
+    "type": "smart_column_compute",
+    "status": "queued",
+    "progress": 0,
+    "rowsAffected": 1000,
+    "createdAt": "2026-03-09T10:00:00Z",
+    "updatedAt": "2026-03-09T10:00:00Z"
+  }
+}

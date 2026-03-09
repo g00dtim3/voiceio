@@ -1,0 +1,54 @@
+{
+  "items": [
+    {
+      "id": "row_1",
+      "text": "The battery life is excellent but customer support is slow.",
+      "reviewed": true,
+      "flagged": false,
+      "favorite": false,
+      "assignments": [
+        {
+          "topicId": "topic_1",
+          "topicLabel": "Battery life",
+          "categoryId": "cat_1",
+          "categoryLabel": "Performance",
+          "sentiment": "positive",
+          "source": "ai",
+          "confidence": 0.91
+        },
+        {
+          "topicId": "topic_2",
+          "topicLabel": "Customer support",
+          "categoryId": "cat_2",
+          "categoryLabel": "Service",
+          "sentiment": "negative",
+          "source": "manual",
+          "confidence": 1
+        }
+      ]
+    },
+    {
+      "id": "row_2",
+      "text": "App crashes after update on Samsung devices.",
+      "reviewed": false,
+      "flagged": false,
+      "favorite": false,
+      "assignments": [
+        {
+          "topicId": "topic_3",
+          "topicLabel": "App stability",
+          "categoryId": "cat_1",
+          "categoryLabel": "Performance",
+          "sentiment": "negative",
+          "source": "ai",
+          "confidence": 0.62
+        }
+      ]
+    }
+  ],
+  "meta": {
+    "page": 1,
+    "pageSize": 50,
+    "total": 957
+  }
+}

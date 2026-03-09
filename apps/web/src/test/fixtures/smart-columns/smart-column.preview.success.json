@@ -1,0 +1,19 @@
+{
+  "items": [
+    {
+      "rowId": "row_1",
+      "inputs": { "text": "I use Apple and Samsung phones." },
+      "output": "Apple"
+    },
+    {
+      "rowId": "row_2",
+      "inputs": { "text": "Google Pixel is a strong alternative." },
+      "output": "Google"
+    },
+    {
+      "rowId": "row_3",
+      "inputs": { "text": "No brand mentioned here." },
+      "output": "Unknown"
+    }
+  ]
+}

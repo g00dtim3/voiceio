@@ -1,0 +1,19 @@
+{
+  "health": "healthy",
+  "stats": {
+    "ttaSlotsUsed": 2,
+    "ttaSlotsTotal": 5,
+    "nonTtaSlotsUsed": 1,
+    "nonTtaSlotsTotal": 10,
+    "rowsComputed": 3000
+  },
+  "items": [
+    {
+      "id": "sc_1",
+      "name": "Extract product names",
+      "sourceColumns": ["comment_text"],
+      "computationType": "llm",
+      "status": "completed"
+    }
+  ]
+}
