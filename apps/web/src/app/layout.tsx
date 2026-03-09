@@ -1,19 +1,18 @@
 import type { Metadata } from "next";
+import { Providers } from "./providers";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "VoiceIO — Qualitative Analytics",
+  title: "Voicio — Qualitative Analytics",
   description: "AI-first qualitative analytics platform",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
-      {/*
-       * Add class="dark" to <html> to activate dark-mode tokens.
-       * Wire this to a ThemeProvider / localStorage in a follow-up step.
-       */}
-      <body>{children}</body>
+    <html lang="en" suppressHydrationWarning>
+      <body>
+        <Providers>{children}</Providers>
+      </body>
     </html>
   );
 }

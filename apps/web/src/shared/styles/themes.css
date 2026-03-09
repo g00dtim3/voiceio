@@ -1,0 +1,80 @@
+/* ─── Semantic Tokens — Light Mode ────────────────────────────────────────────
+   Map core tokens to semantic roles. Components use ONLY these variables.
+   Usage: bg-[var(--bg-surface)], text-[var(--text-primary)], etc.
+────────────────────────────────────────────────────────────────────────────── */
+
+:root {
+  /* ── Backgrounds ────────────────────────────────────────────────────────── */
+  --bg-app: var(--color-neutral-50);
+  --bg-surface: var(--color-neutral-0);
+  --bg-surface-subtle: var(--color-neutral-25);
+  --bg-muted: var(--color-neutral-100);
+  --bg-hover: rgba(37, 99, 235, 0.06);
+
+  /* ── Text ───────────────────────────────────────────────────────────────── */
+  --text-primary: var(--color-neutral-900);
+  --text-secondary: var(--color-neutral-500);
+  --text-muted: var(--color-neutral-500);
+  --text-inverse: #FFFFFF;
+
+  /* ── Borders ────────────────────────────────────────────────────────────── */
+  --border-default: var(--color-neutral-200);
+  --border-strong: var(--color-neutral-300);
+
+  /* ── Icons ──────────────────────────────────────────────────────────────── */
+  --icon-default: var(--color-neutral-700);
+  --icon-muted: var(--color-neutral-500);
+
+  /* ── Modal overlay ──────────────────────────────────────────────────────── */
+  --overlay: rgba(15, 23, 42, 0.40);
+}
+
+/* ─── Semantic Tokens — Dark Mode ────────────────────────────────────────────
+   Overrides applied via next-themes data attribute.
+────────────────────────────────────────────────────────────────────────────── */
+
+[data-theme="dark"] {
+  /* ── Core overrides ─────────────────────────────────────────────────────── */
+  --color-brand-500: #3B82F6;
+  --color-brand-600: #2563EB;
+  --color-brand-700: #1D4ED8;
+
+  --color-neutral-0: #0F172A;
+  --color-neutral-25: #111827;
+  --color-neutral-50: #1E293B;
+  --color-neutral-100: #273449;
+  --color-neutral-200: #334155;
+  --color-neutral-300: #475569;
+  --color-neutral-500: #94A3B8;
+  --color-neutral-700: #CBD5E1;
+  --color-neutral-900: #F8FAFC;
+
+  --color-success-500: #34D399;
+  --color-warning-500: #FBBF24;
+  --color-danger-500: #F87171;
+  --color-info-500: #60A5FA;
+
+  --color-sentiment-positive: #34D399;
+  --color-sentiment-neutral: #FCD34D;
+  --color-sentiment-negative: #F87171;
+
+  /* ── Semantic overrides ─────────────────────────────────────────────────── */
+  --bg-app: #0B1220;
+  --bg-surface: var(--color-neutral-50);
+  --bg-surface-subtle: #182234;
+  --bg-muted: #162033;
+  --bg-hover: rgba(59, 130, 246, 0.14);
+
+  --text-primary: #F1F5F9;
+  --text-secondary: #94A3B8;
+  --text-muted: #7C8AA0;
+  --text-inverse: #0F172A;
+
+  --border-default: #334155;
+  --border-strong: #475569;
+
+  --icon-default: #CBD5E1;
+  --icon-muted: #94A3B8;
+
+  --overlay: rgba(2, 6, 23, 0.65);
+}
