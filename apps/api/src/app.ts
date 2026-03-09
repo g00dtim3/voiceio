@@ -11,6 +11,7 @@ import { reportsRouter } from "./routes/reports";
 import { insightAgentRouter } from "./routes/insightAgent";
 import { jobsRouter } from "./routes/jobs";
 import { publicShareRouter, sharingRouter } from "./routes/sharing";
+import { authRouter } from "./routes/auth";
 
 const app = express();
 
@@ -24,6 +25,9 @@ app.get("/health", (_req, res) => res.json({ ok: true }));
 // ─── Public share link (no auth) ─────────────────────────────────────────────
 // GWT S1: /r/:token serves the report in read-only mode without authentication
 app.use("/r", publicShareRouter);
+
+// ─── Auth routes (no auth required) ──────────────────────────────────────────
+app.use("/api/auth", authRouter);
 
 // ─── Authenticated routes ─────────────────────────────────────────────────────
 app.use("/api", requireAuth);

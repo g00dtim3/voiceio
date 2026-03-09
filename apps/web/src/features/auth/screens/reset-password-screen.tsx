@@ -1,12 +1,14 @@
 "use client";
 
 import { useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { AuthLayout } from "../components/auth-layout";
 import { Button } from "@/shared/ui/button";
 import { TextInput } from "@/shared/ui/text-input";
+import { resetPassword } from "../api/auth-api";
 
 const schema = z
   .object({
@@ -21,6 +23,8 @@ const schema = z
 type FormData = z.infer<typeof schema>;
 
 export function ResetPasswordScreen() {
+  const searchParams = useSearchParams();
+  const resetToken = searchParams.get("token") ?? "";
   const [loading, setLoading] = useState(false);
 
   const {
@@ -34,7 +38,7 @@ export function ResetPasswordScreen() {
   const onSubmit = async (data: FormData) => {
     setLoading(true);
     try {
-      console.log("Reset password:", data);
+      await resetPassword(resetToken, data.password);
       window.location.href = "/login";
     } finally {
       setLoading(false);

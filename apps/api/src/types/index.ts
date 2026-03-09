@@ -186,6 +186,15 @@ export interface ReportSection {
   elements: InsightElement[];
 }
 
+// ─── User ────────────────────────────────────────────────────────────────────
+export interface User {
+  id: string;
+  email: string;
+  name: string;
+  role: "admin" | "editor" | "viewer" | "external_view_only";
+  createdAt: string;
+}
+
 // ─── Insight Agent ────────────────────────────────────────────────────────────
 
 /** Stored answer produced by the insight agent worker.

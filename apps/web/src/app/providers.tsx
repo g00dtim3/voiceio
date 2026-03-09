@@ -3,9 +3,20 @@
 import { ThemeProvider } from "next-themes";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "sonner";
-import { useState, type ReactNode } from "react";
+import { useState, useEffect, type ReactNode } from "react";
+import { initMSW } from "@/shared/lib/msw-init";
 
 export function Providers({ children }: { children: ReactNode }) {
+  const [mswReady, setMswReady] = useState(
+    process.env.NEXT_PUBLIC_MSW_ENABLED !== "true"
+  );
+
+  useEffect(() => {
+    if (!mswReady) {
+      initMSW().then(() => setMswReady(true));
+    }
+  }, [mswReady]);
+
   const [queryClient] = useState(
     () =>
       new QueryClient({
@@ -17,6 +28,8 @@ export function Providers({ children }: { children: ReactNode }) {
         },
       })
   );
+
+  if (!mswReady) return null;
 
   return (
     <ThemeProvider attribute="data-theme" defaultTheme="light" enableSystem={false}>

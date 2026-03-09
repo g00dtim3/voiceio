@@ -7,6 +7,7 @@ import { z } from "zod";
 import { AuthLayout } from "../components/auth-layout";
 import { Button } from "@/shared/ui/button";
 import { TextInput } from "@/shared/ui/text-input";
+import { forgotPassword } from "../api/auth-api";
 
 const schema = z.object({
   email: z.string().email("Please enter a valid email"),
@@ -29,7 +30,7 @@ export function ForgotPasswordScreen() {
   const onSubmit = async (data: FormData) => {
     setLoading(true);
     try {
-      console.log("Reset request:", data);
+      await forgotPassword(data.email);
       setSent(true);
     } finally {
       setLoading(false);

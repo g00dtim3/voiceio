@@ -81,9 +81,7 @@ export function SmartColumnDetailScreen({
           status:
             data.status === "outdated"
               ? "completed"
-              : data.status === "draft"
-                ? "queued"
-                : data.status,
+              : data.status,
           progress: data.status === "completed" ? 100 : 0,
           rowsAffected: 0,
           createdAt: "",

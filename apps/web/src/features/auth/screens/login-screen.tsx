@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -8,6 +9,7 @@ import { AuthLayout } from "../components/auth-layout";
 import { Button } from "@/shared/ui/button";
 import { TextInput } from "@/shared/ui/text-input";
 import { Checkbox } from "@/shared/ui/checkbox";
+import { login } from "../api/auth-api";
 
 const loginSchema = z.object({
   email: z.string().email("Please enter a valid email"),
@@ -17,6 +19,7 @@ const loginSchema = z.object({
 type LoginFormData = z.infer<typeof loginSchema>;
 
 export function LoginScreen() {
+  const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -32,8 +35,8 @@ export function LoginScreen() {
     setLoading(true);
     setError(null);
     try {
-      // TODO: Implement actual auth
-      console.log("Login:", data);
+      await login(data.email, data.password);
+      router.push("/");
     } catch {
       setError("Invalid email or password. Please try again.");
     } finally {
