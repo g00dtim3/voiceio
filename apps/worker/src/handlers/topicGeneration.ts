@@ -1,4 +1,11 @@
 import { pool } from "../db/pool";
+import { openai } from "../lib/openai";
+import {
+  TOPIC_GENERATION_SYSTEM,
+  topicGenerationUser,
+  topicClassificationSystem,
+  topicClassificationUser,
+} from "../lib/prompts";
 import { JobContext } from "../types";
 
 /**
@@ -7,14 +14,18 @@ import { JobContext } from "../types";
  *
  * Steps:
  *  1. Load the collection + all dataset rows for the project/column  (10%)
- *  2. [stub] Call LLM to generate topic list                          (40%)
+ *  2. Call LLM (gpt-4o) to generate topic taxonomy                   (40%)
  *  3. Upsert generated topics into topic_categories + topics          (70%)
- *  4. [stub] Assign every row to the most-relevant topic              (90%)
+ *  4. Call LLM (gpt-4o-mini) in batches to assign every row          (90%)
  *  5. Mark collection status = 'idle'                                (100%)
  */
 export async function handleTopicGeneration(ctx: JobContext): Promise<string | null> {
   const { job, setProgress } = ctx;
-  const { collectionId } = job.payload as { collectionId: string; startMode: string; prompt: string | null };
+  const { collectionId, prompt: userPrompt } = job.payload as {
+    collectionId: string;
+    startMode: string;
+    prompt: string | null;
+  };
 
   // ── 1. Load collection ────────────────────────────────────────────────────
   await setProgress(5);
@@ -37,19 +48,28 @@ export async function handleTopicGeneration(ctx: JobContext): Promise<string | n
   );
   const rows: Array<{ id: string; text: string }> = rowRes.rows.filter((r) => r.text);
 
-  // ── 3. [STUB] LLM call → generate topics ─────────────────────────────────
-  // In production: call Anthropic Messages API with the aggregated texts and
-  // prompt to produce a topic taxonomy. Here we generate deterministic stubs.
-  await setProgress(40);
-  const stubTopics = [
-    { name: "Product Quality", description: "Feedback about quality" },
-    { name: "Customer Service", description: "Support interactions" },
-    { name: "Pricing", description: "Price and value" },
-    { name: "Delivery", description: "Shipping and logistics" },
-    { name: "Other", description: "Uncategorised feedback" },
-  ];
+  // ── 3. LLM call → generate topics ────────────────────────────────────────
+  // Sample up to 200 rows to keep the prompt size manageable
+  await setProgress(20);
+  const sampleTexts = rows.slice(0, 200).map((r) => r.text);
+  const taxonomyResponse = await openai.chat.completions.create({
+    model: "gpt-4o",
+    response_format: { type: "json_object" },
+    messages: [
+      { role: "system", content: TOPIC_GENERATION_SYSTEM },
+      { role: "user", content: topicGenerationUser(sampleTexts, userPrompt) },
+    ],
+    temperature: 0.3,
+  });
 
-  // ── 4. Upsert a default category + topics ────────────────────────────────
+  const taxonomyContent = taxonomyResponse.choices[0].message.content ?? "{}";
+  const taxonomy = JSON.parse(taxonomyContent) as {
+    topics: Array<{ name: string; description: string }>;
+  };
+  const generatedTopics = taxonomy.topics ?? [];
+  if (generatedTopics.length === 0) throw new Error("LLM returned an empty topic list");
+
+  // ── 4. Upsert category + topics ───────────────────────────────────────────
   await setProgress(50);
   const catRes = await pool.query(
     `INSERT INTO topic_categories (collection_id, name, sort_order)
@@ -70,40 +90,70 @@ export async function handleTopicGeneration(ctx: JobContext): Promise<string | n
     categoryId = existing.rows[0].id;
   }
 
-  await pool.query(
-    `DELETE FROM topics WHERE category_id = $1`,
-    [categoryId]
-  );
+  await pool.query(`DELETE FROM topics WHERE category_id = $1`, [categoryId]);
 
   const topicIds: string[] = [];
-  for (let i = 0; i < stubTopics.length; i++) {
+  for (let i = 0; i < generatedTopics.length; i++) {
     const res = await pool.query(
       `INSERT INTO topics (category_id, label, sort_order)
        VALUES ($1, $2, $3) RETURNING id`,
-      [categoryId, stubTopics[i].name, i]
+      [categoryId, generatedTopics[i].name, i]
     );
     topicIds.push(res.rows[0].id);
   }
   await setProgress(70);
 
-  // ── 5. [STUB] Assign rows round-robin (placeholder for LLM scoring) ──────
-  const batchSize = 100;
-  for (let offset = 0; offset < rows.length; offset += batchSize) {
-    const batch = rows.slice(offset, offset + batchSize);
-    for (let j = 0; j < batch.length; j++) {
-      const topicId = topicIds[(offset + j) % topicIds.length];
-      const sentiment = collection.sentiment_enabled
-        ? (["positive", "neutral", "negative"] as const)[(offset + j) % 3]
-        : null;
+  // ── 5. LLM call in batches → assign rows ─────────────────────────────────
+  const BATCH_SIZE = 20;
+  const classificationSystemPrompt = topicClassificationSystem(
+    generatedTopics,
+    collection.sentiment_enabled
+  );
+
+  for (let offset = 0; offset < rows.length; offset += BATCH_SIZE) {
+    const batch = rows.slice(offset, offset + BATCH_SIZE);
+    const batchTexts = batch.map((r) => r.text);
+
+    const classRes = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      response_format: { type: "json_object" },
+      messages: [
+        { role: "system", content: classificationSystemPrompt },
+        { role: "user", content: topicClassificationUser(batchTexts) },
+      ],
+      temperature: 0,
+    });
+
+    const classContent = classRes.choices[0].message.content ?? "{}";
+    const classification = JSON.parse(classContent) as {
+      assignments: Array<{
+        rowIndex: number;
+        topicIndex: number;
+        confidence: number;
+        sentiment?: string;
+      }>;
+    };
+
+    for (const a of classification.assignments ?? []) {
+      const row = batch[a.rowIndex];
+      if (!row) continue;
+      const topicId = topicIds[a.topicIndex];
+      if (!topicId) continue;
+      const sentiment = collection.sentiment_enabled ? (a.sentiment ?? null) : null;
       await pool.query(
         `INSERT INTO topic_assignments
            (project_id, row_id, topic_id, sentiment, source, confidence)
-         VALUES ($1, $2, $3, $4, 'ai', 0.8)
+         VALUES ($1, $2, $3, $4, 'ai', $5)
          ON CONFLICT DO NOTHING`,
-        [collection.project_id, batch[j].id, topicId, sentiment]
+        [collection.project_id, row.id, topicId, sentiment, a.confidence ?? 0.8]
       );
     }
-    const pct = 70 + Math.round((Math.min(offset + batchSize, rows.length) / Math.max(rows.length, 1)) * 20);
+
+    const pct =
+      70 +
+      Math.round(
+        (Math.min(offset + BATCH_SIZE, rows.length) / Math.max(rows.length, 1)) * 20
+      );
     await setProgress(pct);
   }
 
@@ -115,8 +165,12 @@ export async function handleTopicGeneration(ctx: JobContext): Promise<string | n
   );
 
   console.log(
-    `[topic_generation] collection=${collectionId} topics=${stubTopics.length} rows_assigned=${rows.length}`
+    `[topic_generation] collection=${collectionId} topics=${generatedTopics.length} rows_assigned=${rows.length}`
   );
 
-  return JSON.stringify({ collectionId, topicsCreated: stubTopics.length, rowsAssigned: rows.length });
+  return JSON.stringify({
+    collectionId,
+    topicsCreated: generatedTopics.length,
+    rowsAssigned: rows.length,
+  });
 }
