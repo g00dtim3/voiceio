@@ -1,4 +1,7 @@
+import OpenAI from "openai";
 import { pool } from "../db/pool";
+import { openai } from "../lib/openai";
+import { INSIGHT_AGENT_SYSTEM } from "../lib/prompts";
 import { JobContext } from "../types";
 
 /**
@@ -7,12 +10,8 @@ import { JobContext } from "../types";
  *
  * Steps:
  *  1. Fetch relevant topic + smart-column aggregates for the project    (20%)
- *  2. [stub] Call LLM with system context + aggregated data + question  (70%)
- *  3. Persist the answer and return it as resultRef                     (100%)
- *
- * In production the "call LLM" step uses Anthropic Messages API with a
- * tool-use chain: the agent queries the DB for specific metrics, then
- * synthesises a grounded answer with citations.
+ *  2. Call gpt-4o with tool use (run_sql) to produce a grounded answer  (70%)
+ *  3. Return the answer as resultRef                                    (100%)
  */
 export async function handleInsightAgentAsk(ctx: JobContext): Promise<string | null> {
   const { job, setProgress } = ctx;
@@ -22,54 +21,134 @@ export async function handleInsightAgentAsk(ctx: JobContext): Promise<string | n
     filters: unknown[];
   };
 
-  // ── 1. Gather context ─────────────────────────────────────────────────────
+  // ── 1. Gather initial context ─────────────────────────────────────────────
   await setProgress(10);
 
-  // Top 5 topics by assignment count
   const topicsRes = await pool.query(
-    `SELECT t.name, COUNT(ta.id) AS count
+    `SELECT t.label AS name, COUNT(ta.id)::int AS count
      FROM topic_assignments ta
      JOIN topics t ON t.id = ta.topic_id
      JOIN dataset_rows dr ON dr.id = ta.row_id
      WHERE dr.project_id = $1
-     GROUP BY t.name
+     GROUP BY t.label
      ORDER BY count DESC
      LIMIT 5`,
     [job.projectId]
   );
   const topTopics = topicsRes.rows;
 
-  await setProgress(30);
-
-  // Row count
   const rowCountRes = await pool.query(
     `SELECT COUNT(*)::int AS total FROM dataset_rows WHERE project_id = $1`,
     [job.projectId]
   );
   const totalRows: number = rowCountRes.rows[0]?.total ?? 0;
 
-  await setProgress(50);
+  await setProgress(30);
 
-  // ── 2. [STUB] LLM answer ──────────────────────────────────────────────────
-  // In production: build a Messages API request with:
-  //   - system: analyst persona + schema description
-  //   - user:   question + top_topics + totalRows + filters context
-  //   - tools:  run_sql (to answer follow-up metric queries)
-  await setProgress(70);
+  // ── 2. LLM call with tool use ─────────────────────────────────────────────
+  const userMessage =
+    `Project context: ${totalRows} total responses.\n` +
+    `Top topics: ${topTopics.map((t: { name: string; count: number }) => `${t.name} (${t.count})`).join(", ")}.\n` +
+    (filters && (filters as unknown[]).length > 0 ? `Active filters: ${JSON.stringify(filters)}.\n` : "") +
+    (viewId ? `View: ${viewId}.\n` : "") +
+    `\nQuestion: ${question}`;
 
-  const stubAnswer =
-    `Based on ${totalRows} responses, the top themes are: ` +
-    topTopics.map((t: { name: string; count: string }) => `${t.name} (${t.count})`).join(", ") +
-    `. Regarding your question "${question}" — detailed AI analysis will be available once the LLM integration is wired in.`;
+  const runSqlTool: OpenAI.ChatCompletionTool = {
+    type: "function",
+    function: {
+      name: "run_sql",
+      description:
+        "Execute a read-only SELECT query against the project database to retrieve analytics data. " +
+        "Only SELECT statements are allowed. Always filter by project_id = '" + job.projectId + "'.",
+      parameters: {
+        type: "object",
+        properties: {
+          sql: {
+            type: "string",
+            description: "The SQL SELECT statement to execute.",
+          },
+        },
+        required: ["sql"],
+        additionalProperties: false,
+      },
+    },
+  };
+
+  const messages: OpenAI.ChatCompletionMessageParam[] = [
+    { role: "system", content: INSIGHT_AGENT_SYSTEM },
+    { role: "user", content: userMessage },
+  ];
+
+  const MAX_TOOL_ITERATIONS = 5;
+  let iterations = 0;
+  let finalAnswer = "";
+
+  while (iterations < MAX_TOOL_ITERATIONS) {
+    iterations++;
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o",
+      messages,
+      tools: [runSqlTool],
+      tool_choice: "auto",
+      temperature: 0.2,
+    });
+
+    const choice = response.choices[0];
+    messages.push(choice.message);
+
+    if (choice.finish_reason === "stop" || !choice.message.tool_calls?.length) {
+      finalAnswer = choice.message.content ?? "";
+      break;
+    }
+
+    // Execute each tool call (only read-only SQL allowed)
+    const toolResults: OpenAI.ChatCompletionToolMessageParam[] = [];
+    for (const toolCall of choice.message.tool_calls) {
+      if (toolCall.function.name !== "run_sql") {
+        toolResults.push({
+          role: "tool",
+          tool_call_id: toolCall.id,
+          content: "Unknown tool.",
+        });
+        continue;
+      }
+
+      let queryResult: string;
+      try {
+        const { sql } = JSON.parse(toolCall.function.arguments) as { sql: string };
+        // Safety: only allow SELECT statements
+        if (!/^\s*SELECT\s/i.test(sql)) {
+          throw new Error("Only SELECT statements are permitted.");
+        }
+        const res = await pool.query(sql);
+        queryResult = JSON.stringify(res.rows);
+      } catch (err: unknown) {
+        queryResult = `Error: ${err instanceof Error ? err.message : String(err)}`;
+      }
+
+      toolResults.push({
+        role: "tool",
+        tool_call_id: toolCall.id,
+        content: queryResult,
+      });
+    }
+
+    messages.push(...toolResults);
+    await setProgress(30 + Math.round((iterations / MAX_TOOL_ITERATIONS) * 60));
+  }
+
+  await setProgress(95);
 
   const result = {
     question,
-    answer: stubAnswer,
+    answer: finalAnswer,
     context: { totalRows, topTopics, viewId, filters },
     generatedAt: new Date().toISOString(),
   };
 
-  console.log(`[insight_agent_ask] project=${job.projectId} question="${question.slice(0, 60)}..."`);
+  console.log(
+    `[insight_agent_ask] project=${job.projectId} iterations=${iterations} question="${question.slice(0, 60)}"`
+  );
 
   return JSON.stringify(result);
 }

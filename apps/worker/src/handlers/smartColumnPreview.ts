@@ -1,4 +1,6 @@
 import { pool } from "../db/pool";
+import { openai } from "../lib/openai";
+import { smartColumnUser } from "../lib/prompts";
 import { JobContext } from "../types";
 
 /**
@@ -23,26 +25,61 @@ export async function handleSmartColumnPreview(ctx: JobContext): Promise<string 
 
   // Sample up to 20 rows
   const rowRes = await pool.query(
-    `SELECT id FROM dataset_rows
+    `SELECT id, text_to_analyze
+     FROM dataset_rows
      WHERE project_id = $1
      ORDER BY random()
      LIMIT 20`,
     [col.project_id]
   );
-  const sampleRows: string[] = rowRes.rows.map((r: { id: string }) => r.id);
+  const sampleRows: Array<{ id: string; text_to_analyze: Record<string, string> }> = rowRes.rows;
 
   await setProgress(30);
 
   const previewValues: Record<string, unknown> = {};
-  for (let i = 0; i < sampleRows.length; i++) {
-    // [STUB] In production: call the same compute logic as SMART_COLUMN_FILL
-    previewValues[sampleRows[i]] = computeStubValue(col.output_type, i);
-    await setProgress(30 + Math.round(((i + 1) / sampleRows.length) * 60));
+
+  if (col.compute_type === "llm" && sampleRows.length > 0) {
+    const sourceColumns: string[] = col.source_columns ?? [];
+    const userPrompt: string = col.config?.prompt ?? "Transform the input text.";
+
+    const batchRows = sampleRows.map((r, i) => ({
+      rowIndex: i,
+      rowId: r.id,
+      sources: Object.fromEntries(
+        sourceColumns
+          .filter((c) => r.text_to_analyze?.[c] != null)
+          .map((c) => [c, String(r.text_to_analyze[c])])
+      ),
+    }));
+
+    const llmRes = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      response_format: { type: "json_object" },
+      messages: [
+        { role: "system", content: userPrompt },
+        { role: "user", content: smartColumnUser(batchRows, col.output_type) },
+      ],
+      temperature: 0,
+    });
+
+    const llmContent = llmRes.choices[0].message.content ?? "{}";
+    const llmParsed = JSON.parse(llmContent) as {
+      results: Array<{ rowIndex: number; value: unknown; confidence: number }>;
+    };
+
+    for (const result of llmParsed.results ?? []) {
+      const row = batchRows[result.rowIndex];
+      if (!row) continue;
+      previewValues[row.rowId] = result.value;
+    }
+  } else {
+    for (let i = 0; i < sampleRows.length; i++) {
+      previewValues[sampleRows[i].id] = computeStubValue(col.output_type, i);
+    }
   }
 
+  await setProgress(90);
   console.log(`[smart_column_preview] column=${smartColumnId} sample=${sampleRows.length}`);
-
-  // Return preview as resultRef JSON (API can serve it directly from the job)
   return JSON.stringify({ smartColumnId, preview: previewValues });
 }
 
