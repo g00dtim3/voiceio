@@ -1,14 +1,18 @@
 import { pool } from "../db/pool";
-import { openai } from "../lib/openai";
-import { topicClassificationSystem, topicClassificationUser } from "../lib/prompts";
+import { classifyRows } from "../lib/classify";
+import { chunkArray, processInParallel } from "../lib/concurrency";
 import { JobContext } from "../types";
+
+const PAGE_SIZE = 500;
+const BATCH_SIZE = 20;
+const CONCURRENCY = 5;
 
 /**
  * TOPIC_RECOMPUTE
  * payload: { collectionId: string, rowIds?: string[] }
  *
- * Re-runs AI scoring on an existing topic taxonomy for all rows (or a
- * specified subset), updating existing topic_assignments.
+ * Re-runs AI scoring on an existing topic taxonomy.
+ * Uses cursor pagination on row_index to avoid loading all rows into memory.
  */
 export async function handleTopicRecompute(ctx: JobContext): Promise<string | null> {
   const { job, setProgress } = ctx;
@@ -26,8 +30,9 @@ export async function handleTopicRecompute(ctx: JobContext): Promise<string | nu
   );
   if (colRes.rows.length === 0) throw new Error(`Collection ${collectionId} not found`);
   const collection = colRes.rows[0];
+  const { project_id: projectId, text_column_id: textColumnId, sentiment_enabled: sentimentEnabled } = collection;
 
-  // ── 2. Load existing topics for this collection ───────────────────────────
+  // ── 2. Load existing topics ───────────────────────────────────────────────
   await setProgress(10);
   const topicRes = await pool.query(
     `SELECT t.id, t.label AS name, '' AS description
@@ -41,87 +46,92 @@ export async function handleTopicRecompute(ctx: JobContext): Promise<string | nu
   if (topics.length === 0)
     throw new Error("No topics found for collection; run topic_generation first");
 
-  // ── 3. Load target rows with their texts ─────────────────────────────────
+  // ── 3. Paginate + classify in parallel ────────────────────────────────────
   await setProgress(15);
-  let rowRes;
+
+  // When a specific subset of rowIds is provided, load them all (subset is bounded)
   if (rowIds && rowIds.length > 0) {
-    rowRes = await pool.query(
-      `SELECT id, text_to_analyze->$1 AS text
+    const subsetRes = await pool.query(
+      `SELECT id, row_index, text_to_analyze->$1 AS text
        FROM dataset_rows
-       WHERE project_id = $2 AND id = ANY($3::uuid[])`,
-      [collection.text_column_id, collection.project_id, rowIds]
+       WHERE project_id = $2 AND id = ANY($3::uuid[])
+         AND text_to_analyze ? $1
+       ORDER BY row_index ASC`,
+      [textColumnId, projectId, rowIds]
     );
-  } else {
-    rowRes = await pool.query(
-      `SELECT id, text_to_analyze->$1 AS text
-       FROM dataset_rows
-       WHERE project_id = $2
-       ORDER BY row_index`,
-      [collection.text_column_id, collection.project_id]
-    );
-  }
-  const targetRows: Array<{ id: string; text: string }> = rowRes.rows.filter((r) => r.text);
+    const subsetRows: Array<{ id: string; row_index: number; text: string }> =
+      subsetRes.rows.filter((r: { text: string }) => r.text);
 
-  // ── 4. Classify rows in batches via LLM ──────────────────────────────────
-  const BATCH_SIZE = 20;
-  const classificationSystemPrompt = topicClassificationSystem(
-    topics,
-    collection.sentiment_enabled
-  );
-  let processed = 0;
-
-  for (let offset = 0; offset < targetRows.length; offset += BATCH_SIZE) {
-    const batch = targetRows.slice(offset, offset + BATCH_SIZE);
-    const batchTexts = batch.map((r) => r.text);
-
-    const classRes = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
-      response_format: { type: "json_object" },
-      messages: [
-        { role: "system", content: classificationSystemPrompt },
-        { role: "user", content: topicClassificationUser(batchTexts) },
-      ],
-      temperature: 0,
+    const batches = chunkArray(subsetRows, BATCH_SIZE);
+    await processInParallel(batches, CONCURRENCY, async (batch) => {
+      await upsertClassifications(batch, topics, sentimentEnabled, projectId);
     });
 
-    const classContent = classRes.choices[0].message.content ?? "{}";
-    const classification = JSON.parse(classContent) as {
-      assignments: Array<{
-        rowIndex: number;
-        topicIndex: number;
-        confidence: number;
-        sentiment?: string;
-      }>;
-    };
+    console.log(`[topic_recompute] collection=${collectionId} rows_recomputed=${subsetRows.length}`);
+    return JSON.stringify({ collectionId, rowsRecomputed: subsetRows.length });
+  }
 
-    for (const a of classification.assignments ?? []) {
-      const row = batch[a.rowIndex];
-      if (!row) continue;
-      const topic = topics[a.topicIndex];
-      if (!topic) continue;
-      const sentiment = collection.sentiment_enabled ? (a.sentiment ?? null) : null;
+  // Full dataset: cursor pagination
+  const countRes = await pool.query(
+    `SELECT COUNT(*)::int AS total FROM dataset_rows WHERE project_id = $1 AND text_to_analyze ? $2`,
+    [projectId, textColumnId]
+  );
+  const totalRows: number = countRes.rows[0]?.total ?? 0;
+  let processed = 0;
+  let cursor = -1;
 
-      await pool.query(
-        `INSERT INTO topic_assignments
-           (project_id, row_id, topic_id, sentiment, source, confidence)
-         VALUES ($1, $2, $3, $4, 'ai', $5)
-         ON CONFLICT (row_id, topic_id) DO UPDATE
-           SET sentiment  = EXCLUDED.sentiment,
-               source     = EXCLUDED.source,
-               confidence = EXCLUDED.confidence`,
-        [collection.project_id, row.id, topic.id, sentiment, a.confidence ?? 0.85]
-      );
-      processed++;
-    }
+  while (true) {
+    const pageRes = await pool.query(
+      `SELECT id, row_index, text_to_analyze->$1 AS text
+       FROM dataset_rows
+       WHERE project_id = $2 AND text_to_analyze ? $1 AND row_index > $3
+       ORDER BY row_index ASC
+       LIMIT $4`,
+      [textColumnId, projectId, cursor, PAGE_SIZE]
+    );
+    if (pageRes.rows.length === 0) break;
 
-    const pct =
-      15 +
-      Math.round(
-        (Math.min(offset + BATCH_SIZE, targetRows.length) / Math.max(targetRows.length, 1)) * 80
-      );
+    const pageRows: Array<{ id: string; row_index: number; text: string }> =
+      pageRes.rows.filter((r: { text: string }) => r.text);
+
+    const batches = chunkArray(pageRows, BATCH_SIZE);
+    await processInParallel(batches, CONCURRENCY, async (batch) => {
+      await upsertClassifications(batch, topics, sentimentEnabled, projectId);
+    });
+
+    processed += pageRows.length;
+    cursor = pageRes.rows.at(-1).row_index;
+    const pct = 15 + Math.round((processed / Math.max(totalRows, 1)) * 80);
     await setProgress(pct);
   }
 
   console.log(`[topic_recompute] collection=${collectionId} rows_recomputed=${processed}`);
   return JSON.stringify({ collectionId, rowsRecomputed: processed });
+}
+
+async function upsertClassifications(
+  batch: Array<{ id: string; text: string }>,
+  topics: Array<{ id: string; name: string; description: string }>,
+  sentimentEnabled: boolean,
+  projectId: string
+): Promise<void> {
+  const batchInput = batch.map((r, i) => ({ rowIndex: i, text: r.text }));
+  const assignments = await classifyRows(batchInput, topics, sentimentEnabled);
+
+  for (const a of assignments) {
+    const row = batch[a.rowIndex];
+    if (!row) continue;
+    const topic = topics[a.topicIndex];
+    if (!topic) continue;
+    await pool.query(
+      `INSERT INTO topic_assignments
+         (project_id, row_id, topic_id, sentiment, source, confidence)
+       VALUES ($1, $2, $3, $4, 'ai', $5)
+       ON CONFLICT (row_id, topic_id) DO UPDATE
+         SET sentiment  = EXCLUDED.sentiment,
+             source     = EXCLUDED.source,
+             confidence = EXCLUDED.confidence`,
+      [projectId, row.id, topic.id, a.sentiment ?? null, a.confidence]
+    );
+  }
 }
